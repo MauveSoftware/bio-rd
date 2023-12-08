@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bio-routing/bio-rd/cmd/bio-rd/config"
+	"github.com/bio-routing/bio-rd/cmd/bio-rd/ris"
 	bgpapi "github.com/bio-routing/bio-rd/protocols/bgp/api"
 	bgpserver "github.com/bio-routing/bio-rd/protocols/bgp/server"
 	"github.com/bio-routing/bio-rd/protocols/device"
@@ -30,6 +31,7 @@ const (
 var (
 	configFilePath       = flag.String("config.file", "bio-rd.yml", "bio-rd config file")
 	grpcPort             = flag.Uint("grpc_port", 5566, "GRPC API server port")
+	risGRPCPort          = flag.Uint("ris.grpc_port", 4321, "gRPC RIS API server port")
 	grpcKeepaliveMinTime = flag.Uint("grpc_keepalive_min_time", 1, "Minimum time (seconds) for a client to wait between GRPC keepalive pings")
 	metricsPort          = flag.Uint("metrics_port", 55667, "Metrics HTTP server port")
 	bgpListenAddrIPv4    = flag.String("bgp.listen-addr-ipv4", DefaultBGPListenAddrIPv4, "BGP listen address for IPv4 AFI")
@@ -109,6 +111,12 @@ func main() {
 	isisapi.RegisterIsisServiceServer(srv.GRPC(), isisAPISrv)
 	if err := srv.Serve(); err != nil {
 		log.Errorf("failed to start server: %v", err)
+		os.Exit(1)
+	}
+
+	err = ris.Start(*risGRPCPort, *metricsPort, *grpcKeepaliveMinTime, bgpSrv.GetDefaultVRF())
+	if err != nil {
+		log.Errorf("failed to start RIS server: %v", err)
 		os.Exit(1)
 	}
 
