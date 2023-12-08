@@ -3,15 +3,12 @@ package ris
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/bio-routing/bio-rd/cmd/ris/api"
 	"github.com/bio-routing/bio-rd/net"
 	"github.com/bio-routing/bio-rd/routingtable/locRIB"
 	"github.com/bio-routing/bio-rd/routingtable/vrf"
-	"github.com/bio-routing/bio-rd/util/servicewrapper"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 
 	routeapi "github.com/bio-routing/bio-rd/route/api"
 )
@@ -21,27 +18,11 @@ type server struct {
 	risVRF *vrf.VRF
 }
 
-func Start(port, httpPort, grpcKeepaliveMinTime uint, v *vrf.VRF) error {
-	unaryInterceptors := []grpc.UnaryServerInterceptor{}
-	streamInterceptors := []grpc.StreamServerInterceptor{}
-	srv, err := servicewrapper.New(
-		uint16(port),
-		servicewrapper.HTTP(uint16(httpPort)),
-		unaryInterceptors,
-		streamInterceptors,
-		keepalive.EnforcementPolicy{
-			MinTime:             time.Duration(grpcKeepaliveMinTime) * time.Second,
-			PermitWithoutStream: true,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to listen: %w", err)
-	}
-
+func Start(gs grpc.ServiceRegistrar, v *vrf.VRF) error {
 	s := &server{
 		risVRF: v,
 	}
-	api.RegisterRoutingInformationServiceServer(srv.GRPC(), s)
+	api.RegisterRoutingInformationServiceServer(gs, s)
 
 	return nil
 }
